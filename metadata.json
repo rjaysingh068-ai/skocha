@@ -1,0 +1,6 @@
+{
+  "name": "Skocha",
+  "description": "An elegant, premium companion escort web platform featuring verified listings, secure ad postings, a UPI verification coin credit system, and agent management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
