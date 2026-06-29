@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 import { Profile } from '../types.ts';
 
 interface LoginModalProps {
@@ -21,7 +22,8 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const passLower = /[a-z]/.test(password);
   const passDigit = /[0-9]/.test(password);
   const passSpecial = /[^A-Za-z0-9]/.test(password);
-  const isPasswordValid = passLength && passUpper && passLower && passDigit && passSpecial;
+  const isPasswordValid =
+    passLength && passUpper && passLower && passDigit && passSpecial;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,25 +36,35 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
       return;
     }
 
-    const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
-
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      let result;
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Something went wrong.');
+      // 🔐 LOGIN
+      if (!isRegister) {
+        result = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
       }
 
-      onSuccess(data);
-      onClose();
+      // 🆕 REGISTER
+      else {
+        result = await supabase.auth.signUp({
+          email,
+          password,
+        });
+      }
+
+      const { data, error } = result;
+
+      if (error) throw error;
+
+      if (data.user) {
+        onSuccess(data.user as unknown as Profile);
+        onClose();
+      }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -62,7 +74,7 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
       <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
 
-        {/* Close button */}
+        {/* Close */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white"
@@ -146,7 +158,11 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           <div className="mt-5 text-center text-xs text-slate-400">
             {isRegister ? 'Already have account?' : 'New user?'}{' '}
             <button
-              onClick={() => setIsRegister(!isRegister)}
+              type="button"
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setError('');
+              }}
               className="text-amber-400 font-bold"
             >
               {isRegister ? 'Login' : 'Register'}
