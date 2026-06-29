@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle2, Coins, AlertCircle, Trash2, ArrowRight } from 'lucide-react';
 import { Profile, AdAttributes, CATEGORIES, LOCATIONS } from '../types.ts';
+import { supabase } from '../supabaseClient';
 
 interface AdPostFormProps {
   currentAgent: Profile;
@@ -20,6 +21,7 @@ export default function AdPostForm({
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('Mumbai');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91'); // ✅ CHANGE 1: Country code state
   const [adType, setAdType] = useState<'free' | 'paid'>('free');
   
   // Attributes State
@@ -140,11 +142,14 @@ export default function AdPostForm({
     setLoading(true);
 
     try {
-      const response = await fetch('/api/ads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: currentAgent.id,
+      // ✅ CHANGE 3: Full number with country code save hoga
+      const fullPhone = `${countryCode}${phone.replace(/[\s\-]/g, '')}`;
+
+      // Insert ad into Supabase
+      const { error: adError } = await supabase
+        .from('ads')
+        .insert({
+          agent_id: currentAgent.id,
           category,
           title,
           bio,
@@ -152,24 +157,33 @@ export default function AdPostForm({
           attributes,
           type: adType,
           location,
-          phone
-        })
-      });
+          phone: fullPhone, // ✅ Full number with country code
+          status: 'active'
+        });
 
-      const data = await response.json();
+      if (adError) throw new Error(adError.message);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit the ad.');
+      // Deduct coins if paid ad
+      if (adType === 'paid') {
+        const { error: coinError } = await supabase
+          .from('profiles')
+          .update({ coinBalance: currentAgent.coinBalance - 4 })
+          .eq('id', currentAgent.id);
+
+        if (coinError) throw new Error(coinError.message);
       }
 
+      const newBalance = currentAgent.coinBalance - (adType === 'paid' ? 4 : 0);
+
       setSuccess('Your ad listing has been published successfully!');
-      onAdCreated(data.coinBalance);
+      onAdCreated(newBalance);
       
       // Reset inputs
       setTitle('');
       setBio('');
       setPhotos([]);
       setPhone('');
+      setCountryCode('+91');
 
       setTimeout(() => {
         setActiveTab('home');
@@ -244,17 +258,50 @@ export default function AdPostForm({
               </select>
             </div>
 
-            {/* Phone */}
+            {/* ✅ CHANGE 2: Phone with Country Code Selector */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Direct Contact Phone (Mobile Number)</label>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 XXXXX XXXXX (or standard 10-digit mobile)"
-                className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
-              />
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Direct Contact Phone (Mobile Number)
+              </label>
+              <div className="flex gap-2">
+
+                {/* Country Code Dropdown */}
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="px-3 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500/50 shrink-0"
+                >
+                  <option value="+91">🇮🇳 +91 India</option>
+                  <option value="+1">🇺🇸 +1 USA</option>
+                  <option value="+44">🇬🇧 +44 UK</option>
+                  <option value="+971">🇦🇪 +971 UAE</option>
+                  <option value="+92">🇵🇰 +92 Pakistan</option>
+                  <option value="+880">🇧🇩 +880 Bangladesh</option>
+                  <option value="+94">🇱🇰 +94 Sri Lanka</option>
+                  <option value="+977">🇳🇵 +977 Nepal</option>
+                  <option value="+60">🇲🇾 +60 Malaysia</option>
+                  <option value="+65">🇸🇬 +65 Singapore</option>
+                  <option value="+61">🇦🇺 +61 Australia</option>
+                  <option value="+966">🇸🇦 +966 Saudi Arabia</option>
+                </select>
+
+                {/* Number Input */}
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^0-9\s\-]/g, ''))}
+                  placeholder="90548 47048"
+                  className="flex-1 px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+
+              {/* Live Preview */}
+              {phone && (
+                <p className="text-xs text-emerald-400 mt-1.5 font-mono">
+                  ✅ WhatsApp Number: {countryCode}{phone.replace(/[\s\-]/g, '')}
+                </p>
+              )}
             </div>
 
             {/* Ad Title */}

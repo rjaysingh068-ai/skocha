@@ -26,13 +26,20 @@ export default function App() {
   const [loadingAds, setLoadingAds] = useState(true);
   const [errorAds, setErrorAds] = useState('');
 
-  // Auto-authenticate agent from Local Storage on mount
+  // ✅ FIX 1: Auto-authenticate agent from Local Storage on mount
+  // Developer ho to seedha admin tab pe bhejo
   useEffect(() => {
     const saved = localStorage.getItem('skocha_agent_session');
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as Profile;
         setCurrentAgent(parsed);
+
+        // ✅ CHANGE: Developer check karo aur admin tab pe bhejo
+        if (parsed.isDeveloper) {
+          setActiveTab('admin');
+        }
+
         // Silently sync profile coins/details from backend
         syncProfile(parsed.id);
       } catch (e) {
@@ -41,7 +48,8 @@ export default function App() {
     }
   }, []);
 
-  // Sync profile details with server
+  // ✅ FIX 2: Sync profile details with server
+  // Developer ho to admin tab pe rakho
   const syncProfile = async (agentId: string) => {
     try {
       const res = await fetch(`/api/agent/profile?agentId=${agentId}`);
@@ -49,9 +57,25 @@ export default function App() {
         const updated = await res.json() as Profile;
         setCurrentAgent(updated);
         localStorage.setItem('skocha_agent_session', JSON.stringify(updated));
+
+        // ✅ CHANGE: API success pe bhi developer check karo
+        if (updated.isDeveloper) {
+          setActiveTab('admin');
+        }
       }
     } catch (e) {
       console.warn('Silent profile sync failed, using offline session state.');
+
+      // ✅ CHANGE: API fail ho tab bhi localStorage se developer check karo
+      const saved = localStorage.getItem('skocha_agent_session');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as Profile;
+          if (parsed.isDeveloper) {
+            setActiveTab('admin');
+          }
+        } catch (_) {}
+      }
     }
   };
 
@@ -371,7 +395,6 @@ export default function App() {
             {/* SUPPORT CONTACT & PRIVACY POLICY COMPACT SECTION */}
             <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 mt-6 border-t border-slate-800" id="homepage-support-section">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xl">
-                {/* Decorative glow */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full filter blur-3xl pointer-events-none" />
                 
                 <div className="text-left space-y-2">
@@ -387,7 +410,6 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 shrink-0">
-                  {/* Contact Methods */}
                   <div className="flex flex-col gap-1.5 text-xs text-slate-300 font-mono text-left mr-2">
                     <div className="flex items-center space-x-2">
                       <span className="text-slate-500">Email:</span>
@@ -403,7 +425,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Buttons */}
                   <div className="flex items-center gap-3">
                     <a
                       href="/privacy-policy"
@@ -448,7 +469,6 @@ export default function App() {
         {/* VIEW 4: MY ADS / AGENT ACCOUNT */}
         {activeTab === 'my-ads' && currentAgent && (
           <div className="max-w-4xl mx-auto p-4 sm:p-6" id="agent-profile-dashboard">
-            {/* Home button in top left side of profile view */}
             <div className="mb-4 text-left">
               <button
                 onClick={() => setActiveTab('home')}
