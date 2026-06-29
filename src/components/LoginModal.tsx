@@ -16,7 +16,6 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Password checks (register mode)
   const passLength = password.length >= 8;
   const passUpper = /[A-Z]/.test(password);
   const passLower = /[a-z]/.test(password);
@@ -52,18 +51,20 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         if (result.error) throw result.error;
         authData = result.data;
 
-        // ✅ Register ke baad profiles table mein 'agent' role se insert karo
         if (authData.user) {
-          await supabase.from('profiles').insert({
+          const { error: insertError } = await supabase.from('profiles').insert({
             user_id: authData.user.id,
             email: authData.user.email,
             role: 'agent',
           });
+
+          if (insertError) {
+            throw new Error('Profile creation failed: ' + insertError.message);
+          }
         }
       }
 
       if (authData.user) {
-        // ✅ Profiles table se role fetch karo
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -74,12 +75,11 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           throw new Error('Profile not found. Please contact support.');
         }
 
-        // ✅ Profile ko isDeveloper field ke saath banao
         const profile: Profile = {
           id: profileData.id,
           email: profileData.email,
           coinBalance: profileData.coinBalance || 0,
-          isDeveloper: profileData.role === 'developer', // ✅ role check
+          isDeveloper: profileData.role === 'developer',
           createdAt: profileData.created_at,
         };
 
@@ -98,7 +98,6 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
       <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
 
-        {/* Close */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white"
@@ -108,7 +107,6 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
 
         <div className="p-6 sm:p-8">
 
-          {/* Title */}
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white">
               {isRegister ? 'Create Agent Profile' : 'Agent Login'}
@@ -118,7 +116,6 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             </p>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
@@ -126,10 +123,8 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
 
-            {/* Email */}
             <div>
               <label className="text-xs text-slate-300">Email</label>
               <div className="relative">
@@ -145,7 +140,6 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="text-xs text-slate-300">Password</label>
               <div className="relative">
@@ -168,7 +162,6 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -178,7 +171,6 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             </button>
           </form>
 
-          {/* Toggle */}
           <div className="mt-5 text-center text-xs text-slate-400">
             {isRegister ? 'Already have account?' : 'New user?'}{' '}
             <button
