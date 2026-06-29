@@ -3,30 +3,54 @@ import { X, Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Profile } from '../types.ts';
 
-interface LoginModalProps {
+interface RegisterModalProps {
   onClose: () => void;
   onSuccess: (agent: Profile) => void;
-  onSwitchToRegister: () => void;
+  onSwitchToLogin: () => void;
 }
 
-export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: LoginModalProps) {
+export default function RegisterModal({ onClose, onSuccess, onSwitchToLogin }: RegisterModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const passLength = password.length >= 8;
+  const passUpper = /[A-Z]/.test(password);
+  const passLower = /[a-z]/.test(password);
+  const passDigit = /[0-9]/.test(password);
+  const passSpecial = /[^A-Za-z0-9]/.test(password);
+  const isPasswordValid = passLength && passUpper && passLower && passDigit && passSpecial;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    if (!isPasswordValid) {
+      setError('Password does not meet the safety requirements.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const result = await supabase.auth.signInWithPassword({ email, password });
+      const result = await supabase.auth.signUp({ email, password });
       if (result.error) throw result.error;
       const authData = result.data;
 
       if (authData.user) {
+        const { error: insertError } = await supabase.from('profiles').insert({
+          user_id: authData.user.id,
+          email: authData.user.email,
+          role: 'agent',
+          coinBalance: 0,
+        });
+
+        if (insertError) {
+          throw new Error('Profile creation failed: ' + insertError.message);
+        }
+
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -34,7 +58,7 @@ export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: L
           .single();
 
         if (profileError || !profileData) {
-          throw new Error('Profile not found. Please contact support.');
+          throw new Error('Profile not found after registration.');
         }
 
         const profile: Profile = {
@@ -63,8 +87,8 @@ export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: L
         </button>
         <div className="p-6 sm:p-8">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Agent Login</h2>
-            <p className="text-xs text-slate-400 mt-1">Login to continue</p>
+            <h2 className="text-2xl font-bold text-white">Create Agent Profile</h2>
+            <p className="text-xs text-slate-400 mt-1">Register your account</p>
           </div>
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
@@ -96,7 +120,7 @@ export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: L
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-9 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-                  placeholder="Password"
+                  placeholder="Min 8 chars, upper, lower, number, special"
                   required
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-slate-500">
@@ -105,13 +129,13 @@ export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: L
               </div>
             </div>
             <button type="submit" disabled={loading} className="w-full py-2.5 bg-amber-500 text-black font-bold rounded-lg">
-              {loading ? 'Loading...' : 'Login'}
+              {loading ? 'Loading...' : 'Register'}
             </button>
           </form>
           <div className="mt-5 text-center text-xs text-slate-400">
-            New user?{' '}
-            <button type="button" onClick={onSwitchToRegister} className="text-amber-400 font-bold">
-              Register
+            Already have account?{' '}
+            <button type="button" onClick={onSwitchToLogin} className="text-amber-400 font-bold">
+              Login
             </button>
           </div>
         </div>
