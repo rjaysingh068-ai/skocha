@@ -37,32 +37,56 @@ export default function LoginModal({ onClose, onSuccess }: LoginModalProps) {
     }
 
     try {
-      let result;
+      let authData;
 
       // 🔐 LOGIN
       if (!isRegister) {
-        result = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const result = await supabase.auth.signInWithPassword({ email, password });
+        if (result.error) throw result.error;
+        authData = result.data;
       }
 
       // 🆕 REGISTER
       else {
-        result = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        const result = await supabase.auth.signUp({ email, password });
+        if (result.error) throw result.error;
+        authData = result.data;
+
+        // ✅ Register ke baad profiles table mein 'agent' role se insert karo
+        if (authData.user) {
+          await supabase.from('profiles').insert({
+            user_id: authData.user.id,
+            email: authData.user.email,
+            role: 'agent',
+          });
+        }
       }
 
-      const { data, error } = result;
+      if (authData.user) {
+        // ✅ Profiles table se role fetch karo
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', authData.user.id)
+          .single();
 
-      if (error) throw error;
+        if (profileError || !profileData) {
+          throw new Error('Profile not found. Please contact support.');
+        }
 
-      if (data.user) {
-        onSuccess(data.user as unknown as Profile);
+        // ✅ Profile ko isDeveloper field ke saath banao
+        const profile: Profile = {
+          id: profileData.id,
+          email: profileData.email,
+          coinBalance: profileData.coinBalance || 0,
+          isDeveloper: profileData.role === 'developer', // ✅ role check
+          createdAt: profileData.created_at,
+        };
+
+        onSuccess(profile);
         onClose();
       }
+
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
