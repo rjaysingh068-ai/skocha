@@ -25,7 +25,16 @@ export async function onRequestGet(context) {
     });
 
     const data = await res.json();
-    return Response.json(data);
+
+    const mapped = data.map((ad) => ({
+      ...ad,
+      agentId: ad.agent_id,
+      createdAt: ad.created_at,
+      expiresAt: ad.expires_at,
+      agentEmail: ad.agent_email || ''
+    }));
+
+    return Response.json(mapped);
 
   } catch (err) {
     return Response.json(
