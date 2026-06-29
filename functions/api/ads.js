@@ -3,7 +3,20 @@ export async function onRequestGet(context) {
     const supabaseUrl = context.env.VITE_SUPABASE_URL;
     const supabaseKey = context.env.VITE_SUPABASE_ANON_KEY;
 
-    const res = await fetch(`${supabaseUrl}/rest/v1/ads?status=eq.active&order=created_at.desc`, {
+    const url = new URL(context.request.url);
+    const category = url.searchParams.get('category');
+    const location = url.searchParams.get('location');
+
+    let query = `${supabaseUrl}/rest/v1/ads?status=eq.active&order=created_at.desc`;
+
+    if (category && category !== 'All') {
+      query += `&category=eq.${encodeURIComponent(category)}`;
+    }
+    if (location && location !== 'All') {
+      query += `&location=eq.${encodeURIComponent(location)}`;
+    }
+
+    const res = await fetch(query, {
       method: 'GET',
       headers: {
         'apikey': supabaseKey,
