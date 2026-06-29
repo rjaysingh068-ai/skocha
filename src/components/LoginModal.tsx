@@ -30,11 +30,11 @@ export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: L
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', authData.user.id)
+          .eq('email', email)
           .single();
 
         if (profileError || !profileData) {
-          throw new Error('Profile not found. Please contact support.');
+          throw new Error(`Profile not found. ID: ${authData.user.id}`);
         }
 
         const profile: Profile = {
@@ -77,45 +77,3 @@ export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: L
               <label className="text-xs text-slate-300">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-                  placeholder="email@example.com"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-slate-300">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-                  placeholder="Password"
-                  required
-                />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-slate-500">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <button type="submit" disabled={loading} className="w-full py-2.5 bg-amber-500 text-black font-bold rounded-lg">
-              {loading ? 'Loading...' : 'Login'}
-            </button>
-          </form>
-          <div className="mt-5 text-center text-xs text-slate-400">
-            New user?{' '}
-            <button type="button" onClick={onSwitchToRegister} className="text-amber-400 font-bold">
-              Register
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
