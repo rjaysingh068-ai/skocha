@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, CreditCard, RefreshCw, CheckCircle, AlertCircle, Coins, Search, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { Shield, Users, CreditCard, RefreshCw, CheckCircle, AlertCircle, Coins, Search, ArrowUpRight, TrendingUp, XCircle } from 'lucide-react';
 import { Profile, Transaction } from '../types.ts';
 
 interface AdminPanelProps {
@@ -71,14 +71,12 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
         throw new Error(data.error || 'Failed to credit coins.');
       }
 
-      // Update local state
       setAgents((prev) =>
         prev.map((agent) =>
           agent.id === agentId ? { ...agent, coinBalance: data.newBalance } : agent
         )
       );
 
-      // Clear input
       setCreditAmounts((prev) => ({ ...prev, [agentId]: '' }));
       alert('Coins credited successfully!');
     } catch (err: any) {
@@ -104,9 +102,36 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
         throw new Error(data.error || 'Failed to approve payment.');
       }
 
-      // Refresh both lists
       await loadAdminData();
       alert('Payment approved! Coins credited to agent.');
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  // Handle UTR Transaction Deny
+  const handleDenyTransaction = async (txId: string) => {
+    setError('');
+    const confirmed = window.confirm('Are you sure you want to DENY this payment request? This action cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/developer/deny-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          devId: currentAgent.id,
+          transactionId: txId
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to deny payment.');
+      }
+
+      await loadAdminData();
+      alert('Payment request denied and removed from pending list.');
     } catch (err: any) {
       setError(err.message);
     }
@@ -174,7 +199,6 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
           <p className="text-sm text-slate-400">Manage Skocha agents, verify manual UTR payments, and monitor ecosystem health.</p>
         </div>
 
-        {/* Manual Cron Reset trigger */}
         <button
           onClick={handleResetDeveloperCoins}
           disabled={resetLoading}
@@ -193,7 +217,7 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
         </div>
       )}
 
-      {/* Stats Summary Bento Block */}
+      {/* Stats Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Total Registered Agents</p>
@@ -233,7 +257,7 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
       ) : (
         <div className="space-y-8">
           
-          {/* Section: Pending UTR Verifications */}
+          {/* Pending UTR Verifications */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40 flex items-center justify-between">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -278,13 +302,23 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
                         </td>
                         <td className="p-4 text-slate-500">{new Date(tx.createdAt).toLocaleString()}</td>
                         <td className="p-4 text-right">
-                          <button
-                            onClick={() => handleApproveTransaction(tx.id)}
-                            id={`btn-approve-tx-${tx.id}`}
-                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded text-xs transition-colors shadow-sm shadow-emerald-500/10"
-                          >
-                            Approve & Credit Coins
-                          </button>
+                          {/* ✅ CHANGED: Approve + Deny buttons */}
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleApproveTransaction(tx.id)}
+                              id={`btn-approve-tx-${tx.id}`}
+                              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded text-xs transition-colors shadow-sm shadow-emerald-500/10"
+                            >
+                              Approve & Credit Coins
+                            </button>
+                            <button
+                              onClick={() => handleDenyTransaction(tx.id)}
+                              id={`btn-deny-tx-${tx.id}`}
+                              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold rounded text-xs transition-colors"
+                            >
+                              Deny
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -294,15 +328,13 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
             )}
           </div>
 
-          {/* Section: Agent Profiles Directory */}
+          {/* Agent Profiles Directory */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <Users className="w-4 h-4 text-amber-500" />
                 <span>Agent Accounts Directory ({filteredAgents.length})</span>
               </h3>
-
-              {/* Search Bar */}
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
                 <input
@@ -377,7 +409,7 @@ export default function AdminPanel({ currentAgent, onCoinsResetSuccess }: AdminP
             )}
           </div>
 
-          {/* Section: Historical Approved Log Payments */}
+          {/* Historical Approved Transactions */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
