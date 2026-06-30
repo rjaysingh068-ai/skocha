@@ -34,7 +34,7 @@ export async function onRequestPost(context) {
     const agentId = tx.agent_id;
     const coinsToAdd = tx.coins;
 
-    // Get agent current balance
+    // Get agent profile by id (profile id, not user_id)
     const agentRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${agentId}`, {
       headers: {
         'apikey': supabaseKey,
@@ -46,11 +46,11 @@ export async function onRequestPost(context) {
       return Response.json({ error: 'Agent not found' }, { status: 404 });
     }
 
-    const currentBalance = agentData[0].coinBalance || agentData[0].coin_balance || 0;
+    const currentBalance = agentData[0].coinBalance || 0;
     const newBalance = currentBalance + Number(coinsToAdd);
 
-    // Update agent coin balance
-    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${agentId}`, {
+    // Update coin balance
+    const updateRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${agentId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -60,6 +60,11 @@ export async function onRequestPost(context) {
       },
       body: JSON.stringify({ coinBalance: newBalance })
     });
+
+    if (!updateRes.ok) {
+      const errText = await updateRes.text();
+      throw new Error(errText);
+    }
 
     // Mark transaction as completed
     await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${transactionId}`, {
