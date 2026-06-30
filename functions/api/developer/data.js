@@ -46,7 +46,7 @@ export async function onRequestGet(context) {
     });
     const adsData = await adsRes.json();
 
-    // Map profiles to include isDeveloper and coinBalance
+    // Map profiles
     const mappedProfiles = profiles.map(p => ({
       ...p,
       coinBalance: p.coinBalance || p.coin_balance || 0,
@@ -54,12 +54,22 @@ export async function onRequestGet(context) {
       createdAt: p.created_at
     }));
 
-    // Map transactions
+    // Build email lookup from profiles
+    const emailMap = {};
+    profiles.forEach(p => {
+      emailMap[p.user_id] = p.email;
+    });
+
+    // Map transactions — id explicitly + email from profiles
     const mappedTx = transactions.map(tx => ({
       ...tx,
+      id: tx.id,
       agentId: tx.agent_id,
-      agentEmail: tx.agent_email,
+      agentEmail: emailMap[tx.agent_id] || tx.agent_id,
       utrNumber: tx.utr_number,
+      coins: tx.coins,
+      amount: tx.amount,
+      status: tx.status,
       createdAt: tx.created_at
     }));
 
