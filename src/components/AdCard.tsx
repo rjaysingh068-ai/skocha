@@ -12,7 +12,9 @@ export default function AdCard({ ad }: AdCardProps) {
 
   // Custom formatted WhatsApp message
   const whatsappText = `Hey I saw your add on Skocha for ${ad.category}. Is it available now?`;
-  const whatsappUrl = `https://wa.me/91${ad.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappText)}`;
+  // ✅ FIX: Removed hardcoded '91' — ad.phone already contains country code
+  const whatsappUrl = `https://wa.me/${ad.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappText)}`;
+
   const handleNextPhoto = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (ad.photos.length > 1) {
