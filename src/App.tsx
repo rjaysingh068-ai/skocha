@@ -26,6 +26,18 @@ export default function App() {
   const [loadingAds, setLoadingAds] = useState(true);
   const [errorAds, setErrorAds] = useState('');
 
+  const [allAds, setAllAds] = useState<Ad[]>([]);
+
+  const fetchAllAdsForAgent = async () => {
+    try {
+      const response = await fetch(`/api/ads?category=All&location=All`);
+      const data = await response.json();
+      if (response.ok) setAllAds(data);
+    } catch (e) {
+      console.warn('Failed to fetch all ads for agent dashboard.');
+    }
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem('skocha_agent_session');
     if (saved) {
@@ -79,6 +91,12 @@ export default function App() {
   useEffect(() => {
     fetchAds(selectedCategory, selectedLocation);
   }, [selectedCategory, selectedLocation]);
+
+  useEffect(() => {
+    if (activeTab === 'my-ads' && currentAgent) {
+      fetchAllAdsForAgent();
+    }
+  }, [activeTab, currentAgent]);
 
   const handleLoginSuccess = (agent: Profile) => {
     setCurrentAgent(agent);
@@ -163,7 +181,7 @@ export default function App() {
     }
   ];
 
-  const agentAds = currentAgent ? ads.filter(ad => ad.agentId === currentAgent.id) : [];
+  const agentAds = currentAgent ? allAds.filter(ad => ad.agentId === currentAgent.id) : [];
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950 font-sans">
