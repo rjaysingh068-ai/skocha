@@ -27,11 +27,13 @@ export default function LoginModal({ onClose, onSuccess, onSwitchToRegister }: L
       const authData = result.data;
 
       if (authData.user) {
-        const { data: profileData, error: profileError } = await supabase
+        const { data, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('email', email)
-          .single();
+          .limit(1);
+
+        const profileData = data?.[0];
 
         if (profileError || !profileData) {
           throw new Error(`Profile not found. ID: ${authData.user.id}`);
