@@ -19,7 +19,7 @@ export async function onRequestPost(context) {
     }
 
     // Get transaction details
-    const txRes = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${transactionId}`, {
+    const txRes = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${transactionId}&select=*`, {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`
@@ -31,26 +31,52 @@ export async function onRequestPost(context) {
     }
 
     const tx = txData[0];
-    const agentId = tx.agent_id; // yeh user_id hai
+    const agentId = tx.agent_id;
     const coinsToAdd = tx.coins;
 
-    // Get agent profile by user_id
-    const agentRes = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${agentId}`, {
+    // Get agent profile — user_id aur id dono se try karo
+    let agentData = null;
+
+    const agentRes1 = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${agentId}&select=*`, {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`
       }
     });
-    const agentData = await agentRes.json();
-    if (!agentData || agentData.length === 0) {
-      return Response.json({ error: 'Agent not found' }, { status: 404 });
+    const data1 = await agentRes1.json();
+
+    if (data1 && data1.length > 0) {
+      agentData = data1;
+    } else {
+      // Fallback: id se try karo
+      const agentRes2 = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${agentId}&select=*`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      });
+      const data2 = await agentRes2.json();
+      if (data2 && data2.length > 0) {
+        agentData = data2;
+      }
     }
 
-    const currentBalance = agentData[0].coinBalance || 0;
+    if (!agentData || agentData.length === 0) {
+      return Response.json({ error: 'Agent not found', debug: { agentId } }, { status: 404 });
+    }
+
+    const agent = agentData[0];
+
+    // coin_balance aur coinBalance dono handle karo
+    const currentBalance = Number(agent.coin_balance ?? agent.coinBalance ?? 0);
     const newBalance = currentBalance + Number(coinsToAdd);
 
-    // Update coin balance by user_id
-    const updateRes = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${agentId}`, {
+    // coin_balance update karo (snake_case — Supabase default)
+    const updatePayload = {};
+    if ('coin_balance' in agent) updatePayload.coin_balance = newBalance;
+    if ('coinBalance' in agent) updatePayload.coinBalance = newBalance;
+
+    const updateRes = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${agent.user_id || agentId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -58,7 +84,7 @@ export async function onRequestPost(context) {
         'Authorization': `Bearer ${supabaseKey}`,
         'Prefer': 'return=minimal'
       },
-      body: JSON.stringify({ coinBalance: newBalance })
+      body: JSON.stringify(updatePayload)
     });
 
     if (!updateRes.ok) {
@@ -66,7 +92,7 @@ export async function onRequestPost(context) {
       throw new Error('Coin update failed: ' + errText);
     }
 
-    // Mark transaction as completed
+    // Transaction status completed karo
     const txUpdateRes = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${transactionId}`, {
       method: 'PATCH',
       headers: {
