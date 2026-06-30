@@ -1,13 +1,99 @@
-import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle2, Coins, AlertCircle, Trash2, ArrowRight } from 'lucide-react';
-import { Profile, AdAttributes, CATEGORIES, LOCATIONS } from '../types.ts';
+import React, { useState, useRef, useMemo } from 'react';
+import { Upload, FileText, CheckCircle2, Coins, AlertCircle, Trash2, ArrowRight, Search, ChevronDown } from 'lucide-react';
+import { Profile, AdAttributes, CATEGORIES } from '../types.ts';
 import { supabase } from '../supabaseClient';
+import allCities from 'all-the-cities';
 
 interface AdPostFormProps {
   currentAgent: Profile;
   onAdCreated: (updatedCoinBalance: number) => void;
   setActiveTab: (tab: string) => void;
   onOpenBuyCoins: () => void;
+}
+
+// Build a flat "City, Country" list once, sorted by population (bigger cities first)
+const WORLD_CITIES: string[] = allCities
+  .sort((a: any, b: any) => (b.population || 0) - (a.population || 0))
+  .map((c: any) => `${c.name}, ${c.country}`);
+
+// City Search Dropdown Component (kept inside same file, no other files touched)
+function CitySearchSelect({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return WORLD_CITIES.slice(0, 100);
+    const q = query.toLowerCase();
+    return WORLD_CITIES.filter((c) => c.toLowerCase().includes(q)).slice(0, 100);
+  }, [query]);
+
+  // Close dropdown on outside click
+  React.useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500/50 flex items-center justify-between"
+      >
+        <span className={value ? 'text-slate-200' : 'text-slate-600'}>{value || 'Select a city'}</span>
+        <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-slate-950 border border-slate-800 rounded-lg shadow-xl shadow-black/40 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800 bg-slate-900/60">
+            <Search className="w-4 h-4 text-slate-500 shrink-0" />
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search any city worldwide..."
+              className="w-full bg-transparent text-sm text-slate-200 placeholder-slate-600 focus:outline-none"
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-3 text-xs text-slate-500">No cities found.</div>
+            ) : (
+              filtered.map((city) => (
+                <div
+                  key={city}
+                  onClick={() => {
+                    onChange(city);
+                    setOpen(false);
+                    setQuery('');
+                  }}
+                  className={`px-4 py-2 text-sm cursor-pointer hover:bg-amber-500/10 hover:text-amber-400 transition-colors ${
+                    city === value ? 'bg-amber-500/10 text-amber-400' : 'text-slate-300'
+                  }`}
+                >
+                  {city}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdPostForm({
@@ -19,7 +105,7 @@ export default function AdPostForm({
   const [category, setCategory] = useState('Call Girl');
   const [title, setTitle] = useState('');
   const [bio, setBio] = useState('');
-  const [location, setLocation] = useState('Mumbai');
+  const [location, setLocation] = useState('Mumbai, India');
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+91'); // ✅ CHANGE 1: Country code state
   const [adType, setAdType] = useState<'free' | 'paid'>('free');
@@ -244,18 +330,10 @@ export default function AdPostForm({
               </select>
             </div>
 
-            {/* City Location selection */}
+            {/* City Location selection — now searchable, worldwide */}
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">City Location</label>
-              <select
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500/50"
-              >
-                {LOCATIONS.map((loc) => (
-                  <option key={loc} value={loc} className="bg-slate-950 text-slate-200">{loc}</option>
-                ))}
-              </select>
+              <CitySearchSelect value={location} onChange={setLocation} />
             </div>
 
             {/* ✅ CHANGE 2: Phone with Country Code Selector */}
