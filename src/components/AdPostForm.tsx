@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Upload, FileText, CheckCircle2, Coins, AlertCircle, Trash2, ArrowRight, Search, ChevronDown } from 'lucide-react';
 import { Profile, AdAttributes, CATEGORIES } from '../types.ts';
 import { supabase } from '../supabaseClient';
-import allCities from 'all-the-cities';
+import allCitiesRaw from 'cities.json/cities.json';
 
 interface AdPostFormProps {
   currentAgent: Profile;
@@ -12,8 +12,8 @@ interface AdPostFormProps {
 }
 
 // Build a flat "City, Country" list once, sorted by population (bigger cities first)
-const WORLD_CITIES: string[] = allCities
-  .sort((a: any, b: any) => (b.population || 0) - (a.population || 0))
+const WORLD_CITIES: string[] = (allCitiesRaw as any[])
+  .sort((a: any, b: any) => (Number(b.population) || 0) - (Number(a.population) || 0))
   .map((c: any) => `${c.name}, ${c.country}`);
 
 // City Search Dropdown Component (kept inside same file, no other files touched)
