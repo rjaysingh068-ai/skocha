@@ -31,11 +31,11 @@ export async function onRequestPost(context) {
     }
 
     const tx = txData[0];
-    const agentId = tx.agent_id;
+    const agentId = tx.agent_id; // yeh user_id hai
     const coinsToAdd = tx.coins;
 
-    // Get agent profile by id (profile id, not user_id)
-    const agentRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${agentId}`, {
+    // Get agent profile by user_id
+    const agentRes = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${agentId}`, {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`
@@ -49,8 +49,8 @@ export async function onRequestPost(context) {
     const currentBalance = agentData[0].coinBalance || 0;
     const newBalance = currentBalance + Number(coinsToAdd);
 
-    // Update coin balance
-    const updateRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${agentId}`, {
+    // Update coin balance by user_id
+    const updateRes = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${agentId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -63,11 +63,11 @@ export async function onRequestPost(context) {
 
     if (!updateRes.ok) {
       const errText = await updateRes.text();
-      throw new Error(errText);
+      throw new Error('Coin update failed: ' + errText);
     }
 
     // Mark transaction as completed
-    await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${transactionId}`, {
+    const txUpdateRes = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${transactionId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -77,6 +77,11 @@ export async function onRequestPost(context) {
       },
       body: JSON.stringify({ status: 'completed' })
     });
+
+    if (!txUpdateRes.ok) {
+      const errText = await txUpdateRes.text();
+      throw new Error('Transaction status update failed: ' + errText);
+    }
 
     return Response.json({ success: true, newBalance });
 
