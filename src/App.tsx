@@ -371,7 +371,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <a href="/privacy_policy.html" target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold rounded-lg text-xs transition-all">Privacy Policy</a>
+                    <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold rounded-lg text-xs transition-all">Privacy Policy</a>
                     <a href="mailto:supportt.skocha@gmail.com" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition-all">Contact Us</a>
                   </div>
                 </div>
@@ -438,7 +438,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© 2026 Skocha Companion Platform. All rights reserved.</p>
           <div className="flex space-x-4">
-            <a href="/privacy_policy.html" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Discretion & Privacy Policy</a>
+            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Discretion & Privacy Policy</a>
             <a href="#" className="hover:text-amber-500 transition-colors">Terms of Service</a>
             <a href="#" className="hover:text-amber-500 transition-colors">Verification Guides</a>
           </div>
