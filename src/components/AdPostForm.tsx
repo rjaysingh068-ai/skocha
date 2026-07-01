@@ -2,7 +2,6 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Upload, CheckCircle2, Coins, AlertCircle, Trash2, ArrowRight, Search, ChevronDown } from 'lucide-react';
 import { Profile, AdAttributes, CATEGORIES, INDIA_CITY_AREAS } from '../types.ts';
 import { supabase } from '../supabaseClient';
-import allCitiesRaw from 'cities.json/cities.json';
 
 interface AdPostFormProps {
   currentAgent: Profile;
@@ -11,10 +10,65 @@ interface AdPostFormProps {
   onOpenBuyCoins: () => void;
 }
 
-// Build world cities list sorted by population
-const WORLD_CITIES: string[] = (allCitiesRaw as any[])
-  .sort((a: any, b: any) => (Number(b.population) || 0) - (Number(a.population) || 0))
-  .map((c: any) => `${c.name}, ${c.country}`);
+// ✅ Custom cities list from document
+const ESCORT_CITIES: string[] = [
+  'Abohar','Adilabad','Adoni','Agartala','Agra','Ahmedabad','Ahmednagar','Aizawl','Ajmer','Akola',
+  'Alappuzha','Alibaug','Aligarh','Allahabad (Prayagraj)','Almora','Alwar','Amalapuram','Amaravati',
+  'Ambala','Ambedkar Nagar','Ambikapur','Amethi','Amravati','Amreli','Amritsar','Anand','Anantapur',
+  'Anantnag','Angul','Arrah','Asansol','Aurangabad','Ayodhya','Azamgarh','Badami','Bagaha','Bagalkot',
+  'Baghpat','Bahadurgarh','Bahraich','Bakhtiyarpur','Balangir','Balasore','Ballari','Ballia','Balrampur',
+  'Banda','Bangalore (Bengaluru)','Bankura','Baramati','Baramulla','Barbil','Bardhaman','Bareilly',
+  'Bargarh','Barnala','Baroda (Vadodara)','Barpeta','Basti','Batala','Bathinda','Beawar','Beed',
+  'Begusarai','Belagavi','Berhampur','Bettiah','Betul','Bhabua','Bhadrak','Bhadravati','Bhagalpur',
+  'Bharatpur','Bharuch','Bhavnagar','Bhawanipatna','Bhilai','Bhilwara','Bhimavaram','Bhind','Bhiwadi',
+  'Bhiwandi','Bhiwani','Bhopal','Bhubaneswar','Bhuj','Bhusawal','Bidar','Bihar Sharif','Bijapur',
+  'Bijnor','Bikaner','Bilaspur','Bokaro','Botad','Bulandshahr','Burhanpur','Burla','Buxar',
+  'Chandigarh','Chandrapur','Chennai','Chhapra','Chhatarpur','Chhindwara','Chikkamagaluru',
+  'Chilakaluripet','Chiplun','Chitradurga','Chitrakoot','Chittoor','Coimbatore','Cooch Behar',
+  'Cuddalore','Cuttack','Dalhousie','Daman','Darbhanga','Darjeeling','Datia','Dausa','Davanagere',
+  'Dehradun','Delhi','Deoghar','Deoria','Dewas','Dhamtari','Dhanbad','Dhar','Dharamshala',
+  'Dharmavaram','Dharwad','Dhenkanal','Dholpur','Dhubri','Dhule','Dibrugarh','Dimapur','Dindigul',
+  'Dispur','Diu','Dombivli','Dumka','Durg','Durgapur','Eluru','Ernakulam','Erode','Etawah',
+  'Faridabad','Faridkot','Farrukhabad','Fatehabad','Fatehpur','Firozabad','Firozpur','Gadag',
+  'Gadag-Betageri','Gandhidham','Gandhinagar','Gangtok','Gaya','Ghaziabad','Giridih','Goa',
+  'Gonda','Gondia','Gopalganj','Gorakhpur','Greater Noida','Gulbarga (Kalaburagi)','Gulmarg',
+  'Guna','Guntakal','Guntur','Gurgaon (Gurugram)','Guwahati','Gwalior','Hajipur','Haldwani',
+  'Hamirpur','Hampi','Hansi','Hanumangarh','Hapur','Hardoi','Haridwar','Hassan','Hazaribagh',
+  'Hilsa','Hindupur','Hinjewadi','Hisar','Hoshangabad (Narmadapuram)','Hoshiarpur','Hospet (Hosapete)',
+  'Hosur','Hubballi','Hyderabad','Ichalkaranji','Idukki','Imphal','Indore','Itanagar','Jabalpur',
+  'Jagdalpur','Jaipur','Jaisalmer','Jalandhar','Jalaun','Jalgaon','Jalna','Jalpaiguri','Jammu',
+  'Jamnagar','Jamshedpur','Jehanabad','Jejuri','Jeypore','Jhajjar','Jhansi','Jharsuguda','Jind',
+  'Jodhpur','Jorhat','Junagadh','Kadapa','Kaithal','Kakinada','Kalaburagi','Kalimpong',
+  'Kanchipuram','Kannur','Kanpur','Kanyakumari','Kapurthala','Karad','Karimnagar','Karnal',
+  'Karur','Karwar','Kasaragod','Katihar','Kavaratti','Khagaul','Khandwa','Khanna','Khargone',
+  'Kishanganj','Kochi','Kodaikanal','Kohima','Kolar','Kolhapur','Kolkata','Kollam','Koppal',
+  'Korba','Kota','Kottayam','Kozhikode','Krishnagiri','Kullu','Kumbakonam','Kurnool','Kurukshetra',
+  'Lakhimpur','Lalitpur','Latur','Lavasa','Leh','Lonavala','Lucknow','Ludhiana','Machilipatnam',
+  'Madanapalle','Madhubani','Madikeri','Madurai','Mahabaleshwar','Mahbubnagar','Mainpuri',
+  'Malappuram','Malda','Malegaon','Malerkotla','Manali','Mandi','Mandla','Mandsaur',
+  'Mangalore (Mangaluru)','Mansa','Mathura','Mau','Mayiladuthurai','McLeod Ganj','Meerut',
+  'Mehsana','Mhow','Mirzapur','Modinagar','Moga','Mohali','Moradabad','Morbi','Morena',
+  'Motihari','Muktsar','Mumbai','Munger','Munnar','Murshidabad','Mussoorie','Muzaffarnagar',
+  'Muzaffarpur','Mysuru','Nadia','Nadiad','Nagapattinam','Nagaur','Nagpur','Nainital','Nalanda',
+  'Nalbari','Nanded','Nandurbar','Narasaraopet','Narnaul','Nashik','Navsari','Nawada',
+  'Naya Raipur','Neemuch','Nellore','Nizamabad','Noida','Ongole','Pahalgam','Palakkad',
+  'Palampur','Palanpur','Pali','Palwal','Panchgani','Panchkula','Pandharpur','Panipat',
+  'Panaji','Panvel','Parbhani','Pathanamthitta','Pathankot','Patiala','Patna','Phagwara',
+  'Pilibhit','Pollachi','Pondicherry (Puducherry)','Porbandar','Port Blair','Prayagraj',
+  'Puducherry','Pune','Puri','Purnia','Raebareli','Raichur','Raigad','Raigarh','Raipur',
+  'Raisen','Rajahmundry','Rajgir','Rajkot','Rajnandgaon','Rajpura','Ramanagara','Rameswaram',
+  'Rampur','Ranchi','Ranebennur','Rangia','Ratlam','Ratnagiri','Rewa','Rewari','Rishikesh',
+  'Rohtak','Roorkee','Rourkela','Rudrapur','Sagar','Saharanpur','Salem','Samana','Samastipur',
+  'Sambalpur','Sangli','Sasaram','Saswad','Satara','Satna','Sehore','Seoni','Shahjahanpur',
+  'Shillong','Shimla','Shivamogga','Sikar','Siliguri','Silvassa','Sivakasi','Sohna','Solan',
+  'Solapur','Sonamarg','Sonipat','Sri Ganganagar','Srinagar','Sultanpur','Sunam','Sundernagar',
+  'Surat','Tadepalligudem','Talcher','Talegaon Dabhade','Taliparamba','Tanuku','Thane',
+  'Thanjavur','Theni','Thiruvananthapuram','Thoothukudi','Thrissur','Tinsukia','Tiruchengode',
+  'Tiruchirappalli','Tirunelveli','Tirupati','Tiruppur','Tumakuru','Udaipur','Udupi','Ujjain',
+  'Una','Unnao','Vadodara','Valsad','Vapi','Varanasi','Varkala','Vasai-Virar','Vellore',
+  'Veraval','Vidisha','Vijayapura','Vijayawada','Visakhapatnam','Vizianagaram','Warangal',
+  'Yamunanagar','Yavatmal'
+].sort();
 
 // City Search Dropdown
 function CitySearchSelect({ value, onChange }: { value: string; onChange: (val: string) => void }) {
@@ -23,9 +77,9 @@ function CitySearchSelect({ value, onChange }: { value: string; onChange: (val: 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return WORLD_CITIES.slice(0, 100);
+    if (!query.trim()) return ESCORT_CITIES.slice(0, 100);
     const q = query.toLowerCase();
-    return WORLD_CITIES.filter((c) => c.toLowerCase().includes(q)).slice(0, 100);
+    return ESCORT_CITIES.filter((c) => c.toLowerCase().includes(q)).slice(0, 100);
   }, [query]);
 
   React.useEffect(() => {
@@ -55,7 +109,7 @@ function CitySearchSelect({ value, onChange }: { value: string; onChange: (val: 
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search any city worldwide..."
+              placeholder="Search city..."
               className="w-full bg-transparent text-sm text-slate-200 placeholder-slate-600 focus:outline-none"
             />
           </div>
@@ -84,7 +138,7 @@ export default function AdPostForm({ currentAgent, onAdCreated, setActiveTab, on
   const [category, setCategory] = useState('Call Girl');
   const [title, setTitle] = useState('');
   const [bio, setBio] = useState('');
-  const [location, setLocation] = useState('Mumbai, India');
+  const [location, setLocation] = useState('Mumbai');
   const [area, setArea] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [phone, setPhone] = useState('');
@@ -106,10 +160,8 @@ export default function AdPostForm({ currentAgent, onAdCreated, setActiveTab, on
   const wordCount = bio.trim().split(/\s+/).filter(Boolean).length;
   const isBioValid = wordCount >= 300;
 
-  // Get areas for selected city
-  const cityAreas = INDIA_CITY_AREAS[location] || [];
+  const cityAreas = INDIA_CITY_AREAS[`${location}, India`] || [];
 
-  // Reset area when city changes
   const handleCityChange = (city: string) => {
     setLocation(city);
     setArea('');
@@ -155,21 +207,17 @@ export default function AdPostForm({ currentAgent, onAdCreated, setActiveTab, on
       const { error: adError } = await supabase.from('ads').insert({
         agent_id: currentAgent.id,
         category, title, bio, photos, attributes,
-        type: adType,
-        location,
-        area,
+        type: adType, location, area,
         postal_code: postalCode,
         phone: fullPhone,
         whatsapp: whatsappEnabled,
         status: 'active'
       });
       if (adError) throw new Error(adError.message);
-
       if (adType === 'paid') {
         const { error: coinError } = await supabase.from('profiles').update({ coinBalance: currentAgent.coinBalance - 4 }).eq('id', currentAgent.id);
         if (coinError) throw new Error(coinError.message);
       }
-
       const newBalance = currentAgent.coinBalance - (adType === 'paid' ? 4 : 0);
       setSuccess('Your ad listing has been published successfully!');
       onAdCreated(newBalance);
@@ -221,45 +269,29 @@ export default function AdPostForm({ currentAgent, onAdCreated, setActiveTab, on
               <CitySearchSelect value={location} onChange={handleCityChange} />
             </div>
 
-            {/* Area dropdown — only shows if city has areas mapped */}
+            {/* Area */}
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
                 Area / District
                 {cityAreas.length === 0 && <span className="ml-2 text-slate-500 normal-case font-normal">(type manually)</span>}
               </label>
               {cityAreas.length > 0 ? (
-                <select
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500/50"
-                >
+                <select value={area} onChange={(e) => setArea(e.target.value)} className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500/50">
                   <option value="" className="bg-slate-950 text-slate-500">Select area...</option>
                   {cityAreas.map((a) => <option key={a} value={a} className="bg-slate-950 text-slate-200">{a}</option>)}
                 </select>
               ) : (
-                <input
-                  type="text"
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  placeholder="e.g., Downtown, North Side..."
-                  className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
-                />
+                <input type="text" value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g., Andheri, Bandra..." className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" />
               )}
             </div>
 
             {/* Postal Code */}
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Postal Code</label>
-              <input
-                type="text"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9a-zA-Z\s\-]/g, ''))}
-                placeholder="e.g., 400001"
-                className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
-              />
+              <input type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9a-zA-Z\s\-]/g, ''))} placeholder="e.g., 400001" className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" />
             </div>
 
-            {/* Phone with Country Code + WhatsApp Toggle */}
+            {/* Phone + WhatsApp */}
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Direct Contact Phone (Mobile Number)</label>
               <div className="flex gap-2">
@@ -277,50 +309,24 @@ export default function AdPostForm({ currentAgent, onAdCreated, setActiveTab, on
                   <option value="+61">🇦🇺 +61 Australia</option>
                   <option value="+966">🇸🇦 +966 Saudi Arabia</option>
                 </select>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/[^0-9\s\-]/g, ''))}
-                  placeholder="90548 47048"
-                  className="flex-1 px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
-                />
+                <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9\s\-]/g, ''))} placeholder="90548 47048" className="flex-1 px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" />
               </div>
-
-              {/* Live Preview */}
-              {phone && (
-                <p className="text-xs text-emerald-400 mt-1.5 font-mono">
-                  ✅ Number: {countryCode}{phone.replace(/[\s\-]/g, '')}
-                </p>
-              )}
-
-              {/* ✅ WhatsApp Toggle */}
+              {phone && <p className="text-xs text-emerald-400 mt-1.5 font-mono">✅ Number: {countryCode}{phone.replace(/[\s\-]/g, '')}</p>}
               <div className="mt-3 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setWhatsappEnabled((v) => !v)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${whatsappEnabled ? 'bg-[#25D366]' : 'bg-slate-700'}`}
-                >
+                <button type="button" onClick={() => setWhatsappEnabled((v) => !v)} className={`relative w-11 h-6 rounded-full transition-colors ${whatsappEnabled ? 'bg-[#25D366]' : 'bg-slate-700'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${whatsappEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
-                <span className="text-xs text-slate-300 font-semibold">
-                  {whatsappEnabled ? '✅ WhatsApp enabled on this number' : 'WhatsApp available on this number?'}
-                </span>
+                <span className="text-xs text-slate-300 font-semibold">{whatsappEnabled ? '✅ WhatsApp enabled on this number' : 'WhatsApp available on this number?'}</span>
               </div>
             </div>
 
-            {/* Ad Title */}
+            {/* Title */}
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Ad Catchy Title</label>
-              <input
-                type="text" required value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Sophisticated Independent Companion - Priya (South Mumbai)"
-                className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
-              />
+              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Sophisticated Independent Companion - Priya (South Mumbai)" className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" />
             </div>
 
-            {/* Physical Attributes */}
+            {/* Attributes */}
             <div className="md:col-span-2">
               <h3 className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-3">Verification Attributes</h3>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 bg-slate-950/40 border border-slate-800 rounded-xl">
@@ -369,7 +375,7 @@ export default function AdPostForm({ currentAgent, onAdCreated, setActiveTab, on
               )}
             </div>
 
-            {/* Tier Selection */}
+            {/* Tier */}
             <div className="md:col-span-2 border-t border-slate-800 pt-5 mt-3">
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Choose Listing Tier</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
